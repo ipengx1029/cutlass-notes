@@ -92,7 +92,7 @@ __global__ void swizzling(void *__restrict__ Cptr,
 
   copy(g2s_tiled_copy_a, tAgA_g2s, tAsA_g2s);
   copy(g2s_tiled_copy_b, tBgB_g2s, tBsB_g2s);
-  if constexpr (!is_gemm) {
+  if constexpr (!IsGemm) {
     copy(g2s_tiled_copy_c, tCgC_g2s, tCsC_g2s);
   }
 
@@ -489,6 +489,10 @@ torch::Tensor run_swizzling(const torch::Tensor a, const torch::Tensor b, std::o
   // Kernel launch
   BOOL_SWITCH(is_gemm, IsGemm, [&] {
     cudaEventRecord(start, stream);
+    if (shm_size >= 48 * 1024) {
+      cudaFuncSetAttribute(swizzling<Spec, IsGemm, IsCvtPrecision>, cudaFuncAttributeMaxDynamicSharedMemorySize,
+                           shm_size);
+    }
     swizzling<Spec, IsGemm, IsCvtPrecision>
         <<<grid, block, shm_size, stream>>>(c.data_ptr(), a.data_ptr(), b.data_ptr(), M, N, K, out_ptr);
     cudaEventRecord(stop, stream);
