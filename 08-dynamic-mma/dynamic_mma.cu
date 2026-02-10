@@ -582,8 +582,10 @@ torch::Tensor run_dynamic_mma(const torch::Tensor a, const torch::Tensor b, std:
   // Kernel launch
   BOOL_SWITCH(is_gemm, IsGemm, [&] {
     cudaEventRecord(start, stream);
-    cudaFuncSetAttribute(dynamic_mma<Spec, IsGemm, IsCvtPrecision>, cudaFuncAttributeMaxDynamicSharedMemorySize,
-                         shm_size);
+    if (shm_size >= 48 * 1024) {
+      cudaFuncSetAttribute(dynamic_mma<Spec, IsGemm, IsCvtPrecision>, cudaFuncAttributeMaxDynamicSharedMemorySize,
+                           shm_size);
+    }
     dynamic_mma<Spec, IsGemm, IsCvtPrecision>
         <<<grid, block, shm_size, stream>>>(c.data_ptr(), a.data_ptr(), b.data_ptr(), M, N, K, out_ptr);
     cudaEventRecord(stop, stream);

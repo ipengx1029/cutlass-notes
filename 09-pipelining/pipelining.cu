@@ -634,8 +634,10 @@ torch::Tensor run_pipelining(const torch::Tensor a, const torch::Tensor b, std::
   // Kernel launch
   BOOL_SWITCH(is_gemm, IsGemm, [&] {
     cudaEventRecord(start, stream);
-    cudaFuncSetAttribute(pipelining<Spec, IsGemm, IsCvtPrecision>, cudaFuncAttributeMaxDynamicSharedMemorySize,
-                         shm_size);
+    if (shm_size >= 48 * 1024) {
+      cudaFuncSetAttribute(pipelining<Spec, IsGemm, IsCvtPrecision>, cudaFuncAttributeMaxDynamicSharedMemorySize,
+                           shm_size);
+    }
     pipelining<Spec, IsGemm, IsCvtPrecision>
         <<<grid, block, shm_size, stream>>>(c.data_ptr(), a.data_ptr(), b.data_ptr(), M, N, K, out_ptr);
     cudaEventRecord(stop, stream);
